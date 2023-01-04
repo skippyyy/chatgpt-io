@@ -41,10 +41,6 @@ class ChatGPT {
 			console.log("Disconnected from server");
 		});
 
-        // console.log(`sessionToken: ${this.sessionToken}`);
-        // console.log(`email: ${this.email}`);
-        // console.log(`password: ${this.password}`);
-
         if (!this.sessionToken && !(this.email && this.password)) {
             throw new Error('Empty sessionToken and email/password, please recheck the configuration!')
         }     
