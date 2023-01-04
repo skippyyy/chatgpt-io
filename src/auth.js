@@ -7,7 +7,6 @@ const RecaptchaPlugin = require('puppeteer-extra-plugin-recaptcha');
 const StealthPlugin = require('puppeteer-extra-plugin-stealth');
 const { Random } = require("random-js");
 const random = new Random();
-console.log(`random integer: ${random.integer(1,10)}`)
 
 dotenv.config();
 puppeteer.use(StealthPlugin())
@@ -322,12 +321,21 @@ async function checkForChatGPTAtCapacity(
     page,
     opts
   ) {
-    const {
-      timeoutMs = 2 * 60 * 1000, // 2 minutes
-      pollingIntervalMs = 3000,
-      retries = 10
-    } = opts
-  
+    
+    let timeoutMs = 2 * 60 * 1000 // 2 minutes
+    let pollingIntervalMs = 3000
+    let retries = 10
+    if (opts){
+      if(opts.timeoutMs){
+        timeoutMs = opts.timeoutMs
+      }
+      if(opts.pollingIntervalMs){
+        pollingIntervalMs = opts.pollingIntervalMs
+      }
+      if(opts.retries){
+        retries = opts.retries
+      }
+    }
     // console.log('checkForChatGPTAtCapacity', page.url())
     let isAtCapacity = false
     let numTries = 0
@@ -371,7 +379,10 @@ async function waitForConditionOrAtCapacity(
     condition,
     opts
   ) {
-    const { pollingIntervalMs = 500 } = opts
+    let pollingIntervalMs = 500;
+    if (opts && opts.pollingIntervalMs){
+      pollingIntervalMs = opts.pollingIntervalMs;
+    }
   
     return new Promise((resolve, reject) => {
       let resolved = false

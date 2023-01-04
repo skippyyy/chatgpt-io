@@ -1,16 +1,13 @@
 const uuid = require('uuid');
 const io = require('socket.io-client');
-const getOpenAIAuth = require('./auth');
+const {getOpenAIAuth} = require('./auth');
 
 class ChatGPT {
     constructor(
-        email,
-        password,
-        isGoogleLogin,
-        isMicrosoftLogin,
-        sessionToken,
+        options,
         bypassNode = "https://gpt.pawan.krd"
         ) {
+        Object.freeze(options);
         this.ready = false;
         this.socket = io.connect(bypassNode, {
             pingInterval: 10000,
@@ -24,15 +21,19 @@ class ChatGPT {
             upgrade: false,
             forceNew: false
         });
-        this.sessionToken = sessionToken;
-        this.email = email;
-        this.password = password;
-        this.isGoogleLogin = isGoogleLogin;
-        this.isMicrosoftLogin = isMicrosoftLogin;
+        this.sessionToken = options.sessionToken;
+        this.email = options.email;
+        this.password = options.password;
+        this.isGoogleLogin = options.isGoogleLogin;
+        this.isMicrosoftLogin = options.isMicrosoftLogin;
         this.conversations = [];
         this.auth = null;
         this.expires = new Date();
-        this.pauseTokenChecks = false;
+        if(!this.sessionToken){
+            this.pauseTokenChecks = true
+        }else{
+            this.pauseTokenChecks = false
+        }
         this.socket.on('connect', () => {
             console.log('Connected to server');
         });
@@ -40,13 +41,14 @@ class ChatGPT {
             console.log('Disconnected from server');
         });
 
+        // console.log(`sessionToken: ${this.sessionToken}`);
+        // console.log(`email: ${this.email}`);
+        // console.log(`password: ${this.password}`);
+
         if (!this.sessionToken && !(this.email && this.password)) {
             throw new Error('Empty sessionToken and email/password, please recheck the configuration!')
-        }
-        if (!(this.email && this.password)){
-            throw new Error('For email/password authentication, both email and password are required fields!')
-        }       
-        if(!(this.isMicrosoftLogin && this.isGoogleLogin) && !(process.env.CAPTCHA_TOKEN)){
+        }     
+        if(!(this.isMicrosoftLogin || this.isGoogleLogin || this.sessionToken) && !(process.env.CAPTCHA_TOKEN)){
             throw new Error('Missing CAPTCHA_TOKEN in .env file!')
         }
         setInterval(async () => {
@@ -96,10 +98,14 @@ class ChatGPT {
 
     async waitForReady() {
         while (!this.ready) await this.Wait(25);
-        console.log("Ready!!");
+        console.log("Ready");
     }
 
-    async ask(prompt, id = "default") {
+    async ask(prompt, id = "default", tryNum = 0) {
+        if(tryNum >= 3){
+            msg = {error :"Failed to reauthenticate session!"}
+            return msg
+        }
         if (!this.auth || !this.validateToken(this.auth))
             await this.getTokens();
         let conversation = this.getConversationById(id)
@@ -113,13 +119,18 @@ class ChatGPT {
                 resolve(data);
             })
         }));
-
+        if(!data.messageId){
+            console.log('Session expired!')
+            await this.authenticate()
+            tryNum++
+            console.log(tryNum)
+            data = await this.ask(prompt,id,tryNum)
+        }
         if (data.error) console.log(`Error: ${data.error}`);
 
         conversation.parentId = data.messageId;
         conversation.conversationId = data.conversationId;
-
-        return data.answer;
+        return data;
     }
 
     validateToken(token) {
@@ -144,12 +155,25 @@ class ChatGPT {
     }
 
     async authenticate(){
+        this.pauseTokenChecks = true;
+        if (!this.email || !this.password){
+            throw new Error('Could not fetch session token, no email/password in config!')
+        }
         const authInfo = await getOpenAIAuth({
-            email: this._email,
-            password: this._password,
-            isGoogleLogin: this._isGoogleLogin,
-            isMicrosoftLogin: this._isMicrosoftLogin
+            email: this.email,
+            password: this.password,
+            isGoogleLogin: this.isGoogleLogin,
+            isMicrosoftLogin: this.isMicrosoftLogin
         })
+        this.sessionToken = authInfo.sessionToken
+        this.pauseTokenChecks = false;
+    }
+
+    async init(){
+        if(!this.sessionToken && this.email && this.password){
+            await this.authenticate()
+        }
+        await this.waitForReady()
     }
 }
 
