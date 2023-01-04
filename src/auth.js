@@ -25,7 +25,7 @@ async function getOpenAIAuth({
     proxyServer = process.env.PROXY_SERVER,
     minimize = false
     }){
-  
+    let browser;
     try {
 
         browser = await getBrowser({

@@ -26,6 +26,8 @@ class ChatGPT {
         this.password = options.password;
         this.isGoogleLogin = options.isGoogleLogin;
         this.isMicrosoftLogin = options.isMicrosoftLogin;
+		this.executablePath = options.executablePath;
+		this.verbose = options.verbose;
 		this.conversations = [];
 		this.auth = null;
 		this.expires = new Date();
@@ -174,8 +176,12 @@ class ChatGPT {
             email: this.email,
             password: this.password,
             isGoogleLogin: this.isGoogleLogin,
-            isMicrosoftLogin: this.isMicrosoftLogin
+            isMicrosoftLogin: this.isMicrosoftLogin,
+			executablePath: this.executablePath
         })
+		if(this.verbose){
+			console.log(`Session Token: ${authInfo.sessionToken}`)
+		}
         this.sessionToken = authInfo.sessionToken
         this.pauseTokenChecks = false;
     }
