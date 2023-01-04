@@ -134,7 +134,6 @@ class ChatGPT {
             console.log('Session expired!')
             await this.authenticate()
             tryNum++
-            console.log(tryNum)
             data = await this.ask(prompt,id,tryNum)
         }
 		if (data.error) console.log(`Error: ${data.error}`);
