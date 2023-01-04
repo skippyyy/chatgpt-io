@@ -1,8 +1,16 @@
 const uuid = require('uuid');
 const io = require('socket.io-client');
+const getOpenAIAuth = require('./auth');
 
 class ChatGPT {
-    constructor(sessionToken, bypassNode = "https://gpt.pawan.krd") {
+    constructor(
+        email,
+        password,
+        isGoogleLogin,
+        isMicrosoftLogin,
+        sessionToken,
+        bypassNode = "https://gpt.pawan.krd"
+        ) {
         this.ready = false;
         this.socket = io.connect(bypassNode, {
             pingInterval: 10000,
@@ -17,6 +25,10 @@ class ChatGPT {
             forceNew: false
         });
         this.sessionToken = sessionToken;
+        this.email = email;
+        this.password = password;
+        this.isGoogleLogin = isGoogleLogin;
+        this.isMicrosoftLogin = isMicrosoftLogin;
         this.conversations = [];
         this.auth = null;
         this.expires = new Date();
@@ -27,6 +39,16 @@ class ChatGPT {
         this.socket.on('disconnect', () => {
             console.log('Disconnected from server');
         });
+
+        if (!this.sessionToken && !(this.email && this.password)) {
+            throw new Error('Empty sessionToken and email/password, please recheck the configuration!')
+        }
+        if (!(this.email && this.password)){
+            throw new Error('For email/password authentication, both email and password are required fields!')
+        }       
+        if(!(this.isMicrosoftLogin && this.isGoogleLogin) && !(process.env.CAPTCHA_TOKEN)){
+            throw new Error('Missing CAPTCHA_TOKEN in .env file!')
+        }
         setInterval(async () => {
             if (this.pauseTokenChecks) return;
             this.pauseTokenChecks = true;
@@ -119,6 +141,15 @@ class ChatGPT {
         this.auth = data.auth;
         this.expires = data.expires;
         this.ready = true;
+    }
+
+    async authenticate(){
+        const authInfo = await getOpenAIAuth({
+            email: this._email,
+            password: this._password,
+            isGoogleLogin: this._isGoogleLogin,
+            isMicrosoftLogin: this._isMicrosoftLogin
+        })
     }
 }
 
