@@ -36,11 +36,7 @@ class ChatGPT {
 		this.conversations = [];
 		this.auth = null;
 		this.expires = new Date();
-        if(!this.sessionToken){
-            this.pauseTokenChecks = true
-        }else{
-    		this.pauseTokenChecks = false
-        }
+		this.pauseTokenChecks = false;
 		this.socket.on("connect", () => {
 			console.log("Connected to server");
 		});
@@ -56,7 +52,7 @@ class ChatGPT {
             throw new Error('Missing CAPTCHA_TOKEN in .env file!')
         }
 		setInterval(async () => {
-			if (this.pauseTokenChecks) return;
+			if (this.pauseTokenChecks || !this.sessionToken) return;
 			this.pauseTokenChecks = true;
 			const now = new Date();
 			const offset = 2 * 60 * 1000;
